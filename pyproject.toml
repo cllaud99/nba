@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "nba"
+version = "0.1.0"
+description = ""
+authors = ["ClaudioPontes <claudiohpontes@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.11.5"
+requests = "^2.32.3"
+pandas = "^2.2.2"
+pyarrow = "^17.0.0"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.4.2"
+isort = "^5.13.2"
+taskipy = "^1.13.0"
+beautifulsoup4 = "^4.9.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.taskipy.tasks]
+format = """
+isort .
+black .
+"""
+kill = "kill -9 $(lsof -t -i :8000)"
+test = "pytest -v"
+run = """
+python3 app/data_ingestion.py
+"""
+doc = "mkdocs serve"
