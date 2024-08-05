@@ -1,7 +1,11 @@
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+from config_logger import configure_logger
+from loguru import logger
 
+# Configura o logger
+configure_logger()
 
 class DropdownScraper:
     def __init__(self, url, class_dropdown):
@@ -26,9 +30,10 @@ class DropdownScraper:
         try:
             response = requests.get(self.url)
             response.raise_for_status()  # Levanta um erro para códigos de status HTTP 4xx/5xx
+            logger.info("Página acessada com sucesso.")
             return BeautifulSoup(response.text, "html.parser")
         except requests.RequestException as e:
-            print(f"Erro ao acessar a página: {e}")
+            logger.error(f"Erro ao acessar a página: {e}")
             return None
 
     def get_dropdown_values(self):
@@ -40,16 +45,16 @@ class DropdownScraper:
         """
         soup = self._fetch_page()
         if soup is None:
+            logger.warning("Não foi possível acessar a página. Nenhum valor de dropdown será retornado.")
             return {}
 
         dropdowns = soup.find_all("select", class_=self.class_dropdown)
         dropdown_data = {}
 
         if not dropdowns:
-            print("Nenhum dropdown encontrado com a classe fornecida.")
+            logger.info("Nenhum dropdown encontrado com a classe fornecida.")
 
         for i, dropdown in enumerate(dropdowns):
-
             label = dropdown.find_parent("label")
             description = (
                 label.find("p").get_text(strip=True) if label else f"Dropdown_{i}"
@@ -64,8 +69,9 @@ class DropdownScraper:
             if values:
                 df_values = pd.DataFrame(values, columns=["Value"])
                 dropdown_data[description] = df_values
+                logger.info(f"Valores obtidos para o dropdown '{description}'.")
             else:
-                print(f"Sem opções disponíveis para o dropdown {i}.")
+                logger.info(f"Sem opções disponíveis para o dropdown {i}.")
 
         return dropdown_data
 
@@ -79,8 +85,12 @@ class DropdownScraper:
         Returns:
             pd.DataFrame: DataFrame com os valores do dropdown correspondente ao rótulo fornecido.
         """
-        return self.dropdown_data.get(label, pd.DataFrame())
-
+        df = self.dropdown_data.get(label, pd.DataFrame())
+        if df.empty:
+            logger.info(f"Nenhum DataFrame encontrado para o label '{label}'.")
+        else:
+            logger.info(f"DataFrame retornado para o label '{label}'.")
+        return df
 
 # Exemplo de uso:
 if __name__ == "__main__":
