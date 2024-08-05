@@ -150,6 +150,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 data/
+nba_stats/
 *.csv
 
 # pytype static type analyzer

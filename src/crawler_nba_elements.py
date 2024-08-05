@@ -13,7 +13,7 @@ class DropdownScraper:
         """
         self.url = url
         self.class_dropdown = class_dropdown
-        self.dropdown_data = self.get_dropdown_values()  # Obtém e armazena os DataFrames
+        self.dropdown_data = self.get_dropdown_values()
 
     def _fetch_page(self):
         """
@@ -48,7 +48,7 @@ class DropdownScraper:
             print("Nenhum dropdown encontrado com a classe fornecida.")
         
         for i, dropdown in enumerate(dropdowns):
-            # Encontre o <label> associado ao <select> e extraia o texto do <p>
+ 
             label = dropdown.find_parent('label')
             description = label.find('p').get_text(strip=True) if label else f'Dropdown_{i}'
 
