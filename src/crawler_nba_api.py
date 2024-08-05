@@ -1,7 +1,11 @@
 import os
-
 import pandas as pd
 import requests
+from config_logger import configure_logger
+from loguru import logger
+
+# Configura o logger
+configure_logger()
 
 # Definindo os headers para a requisição
 headers = {
@@ -15,7 +19,6 @@ headers = {
     "x-nba-stats-origin": "stats",
     "x-nba-stats-token": "true",
 }
-
 
 def fetch_api_response(season: str, season_type: str, per_mode: str) -> dict:
     """
@@ -67,17 +70,19 @@ def fetch_api_response(season: str, season_type: str, per_mode: str) -> dict:
         "&VsDivision="
         "&Weight="
     )
-    print(f"URL: {url}")
-    response = requests.get(url, headers=headers)
-
-    print(f"Status Code: {response.status_code}")
-    print(response.text)
-
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"Falha ao recuperar os dados: {response.status_code}")
-
+    logger.info(f"URL: {url}")
+    try:
+        response = requests.get(url, headers=headers)
+        logger.info(f"Status Code: {response.status_code}")
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            logger.error(f"Falha ao recuperar os dados: {response.status_code}")
+            response.raise_for_status()
+    except requests.RequestException as e:
+        logger.error(f"Erro na requisição: {e}")
+        raise
 
 def save_data_to_csv(data: dict, folder_path: str, file_name: str) -> None:
     """
@@ -91,16 +96,19 @@ def save_data_to_csv(data: dict, folder_path: str, file_name: str) -> None:
     Returns:
         None
     """
-    df = pd.DataFrame(
-        data["resultSets"][0]["rowSet"], columns=data["resultSets"][0]["headers"]
-    )
-
-    os.makedirs(folder_path, exist_ok=True)
-
-    file_path = os.path.join(folder_path, file_name)
-    df.to_csv(file_path, index=False)
-    print(f"Dados salvos em: {file_path}")
-
+    try:
+        df = pd.DataFrame(
+            data["resultSets"][0]["rowSet"], columns=data["resultSets"][0]["headers"]
+        )
+        
+        os.makedirs(folder_path, exist_ok=True)
+        
+        file_path = os.path.join(folder_path, file_name)
+        df.to_csv(file_path, index=False)
+        logger.info(f"Dados salvos em: {file_path}")
+    except Exception as e:
+        logger.error(f"Erro ao salvar os dados em CSV: {e}")
+        raise
 
 if __name__ == "__main__":
     season = "2023-24"
@@ -113,4 +121,4 @@ if __name__ == "__main__":
             data, "./nba_stats", f"nba__{season}_{per_mode}_{season_type}.csv"
         )
     except Exception as e:
-        print(e)
+        logger.error(f"Erro no processamento: {e}")
