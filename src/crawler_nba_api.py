@@ -1,6 +1,7 @@
 import os
-import requests
+
 import pandas as pd
+import requests
 
 # Definindo os headers para a requisição
 headers = {
@@ -14,6 +15,7 @@ headers = {
     "x-nba-stats-origin": "stats",
     "x-nba-stats-token": "true",
 }
+
 
 def fetch_api_response(season: str, season_type: str, per_mode: str) -> dict:
     """
@@ -65,17 +67,17 @@ def fetch_api_response(season: str, season_type: str, per_mode: str) -> dict:
         "&VsDivision="
         "&Weight="
     )
-    print(f"URL: {url}")  # Depuração: Imprimir URL
+    print(f"URL: {url}")
     response = requests.get(url, headers=headers)
-    
-    print(f"Status Code: {response.status_code}")  # Depuração: Imprimir status code
-    print(response.text)  # Depuração: Imprimir resposta da API
-    
+
+    print(f"Status Code: {response.status_code}")
+    print(response.text)
+
     if response.status_code == 200:
         return response.json()
     else:
         raise Exception(f"Falha ao recuperar os dados: {response.status_code}")
-    
+
 
 def save_data_to_csv(data: dict, folder_path: str, file_name: str) -> None:
     """
@@ -89,21 +91,26 @@ def save_data_to_csv(data: dict, folder_path: str, file_name: str) -> None:
     Returns:
         None
     """
-    df = pd.DataFrame(data['resultSets'][0]['rowSet'], columns=data['resultSets'][0]['headers'])
-    
+    df = pd.DataFrame(
+        data["resultSets"][0]["rowSet"], columns=data["resultSets"][0]["headers"]
+    )
+
     os.makedirs(folder_path, exist_ok=True)
-    
+
     file_path = os.path.join(folder_path, file_name)
     df.to_csv(file_path, index=False)
     print(f"Dados salvos em: {file_path}")
 
+
 if __name__ == "__main__":
-    season = '2023-24'
+    season = "2023-24"
     season_type = "IST"
-    per_mode = 'Totals'
-    
+    per_mode = "Totals"
+
     try:
         data = fetch_api_response(season, season_type, per_mode)
-        save_data_to_csv(data, './nba_stats', f'nba__{season}_{per_mode}_{season_type}.csv')
+        save_data_to_csv(
+            data, "./nba_stats", f"nba__{season}_{per_mode}_{season_type}.csv"
+        )
     except Exception as e:
         print(e)

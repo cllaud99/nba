@@ -1,6 +1,7 @@
+import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-import pandas as pd
+
 
 class DropdownScraper:
     def __init__(self, url, class_dropdown):
@@ -18,14 +19,14 @@ class DropdownScraper:
     def _fetch_page(self):
         """
         Faz uma requisição HTTP para obter o conteúdo da página.
-        
+
         Returns:
             BeautifulSoup: Objeto BeautifulSoup contendo o conteúdo HTML da página.
         """
         try:
             response = requests.get(self.url)
             response.raise_for_status()  # Levanta um erro para códigos de status HTTP 4xx/5xx
-            return BeautifulSoup(response.text, 'html.parser')
+            return BeautifulSoup(response.text, "html.parser")
         except requests.RequestException as e:
             print(f"Erro ao acessar a página: {e}")
             return None
@@ -40,26 +41,32 @@ class DropdownScraper:
         soup = self._fetch_page()
         if soup is None:
             return {}
-        
-        dropdowns = soup.find_all('select', class_=self.class_dropdown)
+
+        dropdowns = soup.find_all("select", class_=self.class_dropdown)
         dropdown_data = {}
-        
+
         if not dropdowns:
             print("Nenhum dropdown encontrado com a classe fornecida.")
-        
-        for i, dropdown in enumerate(dropdowns):
- 
-            label = dropdown.find_parent('label')
-            description = label.find('p').get_text(strip=True) if label else f'Dropdown_{i}'
 
-            values = [option.get_text(strip=True) for option in dropdown.find_all('option') if option.get_text(strip=True)]
-            
+        for i, dropdown in enumerate(dropdowns):
+
+            label = dropdown.find_parent("label")
+            description = (
+                label.find("p").get_text(strip=True) if label else f"Dropdown_{i}"
+            )
+
+            values = [
+                option.get_text(strip=True)
+                for option in dropdown.find_all("option")
+                if option.get_text(strip=True)
+            ]
+
             if values:
-                df_values = pd.DataFrame(values, columns=['Value'])
+                df_values = pd.DataFrame(values, columns=["Value"])
                 dropdown_data[description] = df_values
             else:
                 print(f"Sem opções disponíveis para o dropdown {i}.")
-        
+
         return dropdown_data
 
     def get_dataframe_values(self, label):
@@ -74,16 +81,17 @@ class DropdownScraper:
         """
         return self.dropdown_data.get(label, pd.DataFrame())
 
+
 # Exemplo de uso:
 if __name__ == "__main__":
-    url = 'https://www.nba.com/stats/leaders'
-    class_dropdown = 'DropDown_select__4pIg9'
-    
+    url = "https://www.nba.com/stats/leaders"
+    class_dropdown = "DropDown_select__4pIg9"
+
     scraper = DropdownScraper(url, class_dropdown)
-    
-    label = 'Stat Category'
+
+    label = "Stat Category"
     df = scraper.get_dataframe_values(label)
-    
+
     if not df.empty:
         print(f"DataFrame para o label '{label}':")
         print(df)
