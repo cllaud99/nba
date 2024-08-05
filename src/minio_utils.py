@@ -3,6 +3,7 @@ import os
 import boto3
 import pandas as pd
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
+from crawler_nba_api import fetch_api_response
 
 
 def upload_csv_to_minio(csv_file_path, object_name, bucket_name):
@@ -69,6 +70,25 @@ def upload_csv_to_minio(csv_file_path, object_name, bucket_name):
     except Exception as e:
         print(f"Erro ao enviar o arquivo: {e}")
 
+
+def main(season: str, season_type: str, per_mode: str, object_name: str, bucket_name: str):
+    """
+    Função principal para buscar dados da API, salvar em CSV e enviar para o MinIO.
+
+    Args:
+        season (str): Temporada para a qual a requisição será feita.
+        season_type (str): Tipo de temporada (ex: "Regular Season").
+        per_mode (str): Modo de métrica (ex: 'PerGame').
+        object_name (str): Nome do objeto no bucket do MinIO.
+        bucket_name (str): Nome do bucket onde o arquivo será armazenado.
+    """
+    data = fetch_api_response(season, season_type, per_mode)
+    df = pd.DataFrame(data['resultSets'][0]['rowSet'], columns=data['resultSets'][0]['headers'])
+    
+    temp_csv_path = "/tmp/nba_data.csv"
+    df.to_csv(temp_csv_path, index=False)
+
+    upload_csv_to_minio(temp_csv_path, object_name, bucket_name)
 
 if __name__ == "__main__":
     # Defina os parâmetros de exemplo ou configure-os conforme necessário
