@@ -109,16 +109,3 @@ def save_data_to_csv(data: dict, folder_path: str, file_name: str) -> None:
     except Exception as e:
         logger.error(f"Erro ao salvar os dados em CSV: {e}")
         raise
-
-if __name__ == "__main__":
-    season = "2023-24"
-    season_type = "IST"
-    per_mode = "Totals"
-
-    try:
-        data = fetch_api_response(season, season_type, per_mode)
-        save_data_to_csv(
-            data, "./nba_stats", f"nba__{season}_{per_mode}_{season_type}.csv"
-        )
-    except Exception as e:
-        logger.error(f"Erro no processamento: {e}")

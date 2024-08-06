@@ -1,0 +1,9 @@
+KAGGLE_CONFIG_DIR=./keys
+#Usuario e senha para o minio
+MINIO_ROOT_USER=admin-minio
+MINIO_ROOT_PASSWORD=admin-minio
+PROJECT_PATH=./data
+MINIO_ENDPOINT=http://localhost:9000
+AWS_REGION=us-east-1
+LOG_LEVEL=DEBUG
+DEBUG_MODE=true

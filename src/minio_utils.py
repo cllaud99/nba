@@ -1,10 +1,31 @@
 import os
-
 import boto3
 import pandas as pd
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
 from crawler_nba_api import fetch_api_response
+from io import StringIO
 
+# Definindo variáveis de ambiente globalmente
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://localhost:9000")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "admin-minio")
+MINIO_SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "admin-minio")
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+
+def create_s3_client():
+    """
+    Cria um cliente boto3 configurado para MinIO.
+
+    Returns:
+        boto3.client: Cliente do S3 configurado para MinIO.
+    """
+    session = boto3.session.Session()
+    return session.client(
+        service_name="s3",
+        endpoint_url=MINIO_ENDPOINT,
+        aws_access_key_id=MINIO_ACCESS_KEY,
+        aws_secret_access_key=MINIO_SECRET_KEY,
+        region_name=AWS_REGION,
+    )
 
 def upload_csv_to_minio(csv_file_path, object_name, bucket_name):
     """
@@ -15,21 +36,7 @@ def upload_csv_to_minio(csv_file_path, object_name, bucket_name):
         object_name (str): Nome do objeto no bucket do MinIO.
         bucket_name (str): Nome do bucket onde o arquivo será armazenado.
     """
-    # Carregar variáveis de ambiente
-    minio_endpoint = os.getenv("MINIO_ENDPOINT", "http://localhost:9000")
-    minio_access_key = os.getenv("MINIO_ROOT_USER", "admin-minio")
-    minio_secret_key = os.getenv("MINIO_ROOT_PASSWORD", "admin-minio")
-    aws_region = os.getenv("AWS_REGION", "us-east-1")
-
-    # Criar uma sessão boto3 configurada para MinIO
-    session = boto3.session.Session()
-    s3_client = session.client(
-        service_name="s3",
-        endpoint_url=minio_endpoint,
-        aws_access_key_id=minio_access_key,
-        aws_secret_access_key=minio_secret_key,
-        region_name=aws_region,
-    )
+    s3_client = create_s3_client()
 
     # Ler o arquivo CSV
     df = pd.read_csv(csv_file_path)
@@ -62,14 +69,73 @@ def upload_csv_to_minio(csv_file_path, object_name, bucket_name):
     # Fazer upload do arquivo CSV para o MinIO
     try:
         s3_client.upload_file(temp_csv_path, bucket_name, object_name)
-        print(
-            f"Arquivo '{object_name}' enviado com sucesso para o bucket '{bucket_name}'"
-        )
+        print(f"Arquivo '{object_name}' enviado com sucesso para o bucket '{bucket_name}'")
     except (NoCredentialsError, PartialCredentialsError) as e:
         print(f"Erro de credenciais: {e}")
     except Exception as e:
         print(f"Erro ao enviar o arquivo: {e}")
 
+def read_csv_from_minio(object_name, bucket_name):
+    """
+    Lê um arquivo CSV do bucket no MinIO e retorna um DataFrame.
+
+    Args:
+        object_name (str): Nome do objeto no bucket do MinIO.
+        bucket_name (str): Nome do bucket onde o arquivo está armazenado.
+
+    Returns:
+        DataFrame: Dados lidos do arquivo CSV.
+    """
+    s3_client = create_s3_client()
+
+    # Ler o CSV do MinIO
+    try:
+        response = s3_client.get_object(Bucket=bucket_name, Key=object_name)
+        status = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+        
+        if status == 200:
+            print(f"Successful S3 get_object response. Status - {status}")
+            csv_content = response["Body"].read().decode('utf-8')
+            return pd.read_csv(StringIO(csv_content))
+        else:
+            print(f"Unsuccessful S3 get_object response. Status - {status}")
+            return None
+    except ClientError as e:
+        print(f"Erro ao ler o arquivo: {e}")
+        return None
+    
+def list_objects_in_bucket(bucket_name):
+    """
+    Lista todos os objetos em um bucket no MinIO.
+
+    Args:
+        bucket_name (str): Nome do bucket cujos objetos serão listados.
+
+    Returns:
+        list: Lista de objetos no bucket.
+    """
+    s3_client = create_s3_client()
+
+    try:
+        # Lista os objetos no bucket
+        response = s3_client.list_objects_v2(Bucket=bucket_name)
+        status = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+        
+        if status == 200:
+            print(f"Successful S3 list_objects_v2 response. Status - {status}")
+            objects = response.get("Contents", [])
+            if not objects:
+                print("Nenhum objeto encontrado no bucket.")
+            else:
+                for obj in objects:
+                    print(f"Nome do objeto: {obj['Key']}, Tamanho: {obj['Size']} bytes")
+            return objects
+        else:
+            print(f"Unsuccessful S3 list_objects_v2 response. Status - {status}")
+            return None
+    except ClientError as e:
+        print(f"Erro ao listar objetos: {e}")
+        return None
 
 def main(season: str, season_type: str, per_mode: str, object_name: str, bucket_name: str):
     """
@@ -89,11 +155,8 @@ def main(season: str, season_type: str, per_mode: str, object_name: str, bucket_
     df.to_csv(temp_csv_path, index=False)
 
     upload_csv_to_minio(temp_csv_path, object_name, bucket_name)
-
-if __name__ == "__main__":
-    # Defina os parâmetros de exemplo ou configure-os conforme necessário
-    csv_file_path = "./nba_stats/nba__1997-98_All Star.csv"
-    object_name = "nba__1997-98_All Star.csv"
-    bucket_name = "nba-raw"
-
-    upload_csv_to_minio(csv_file_path, object_name, bucket_name)
+    
+    # Ler o CSV do MinIO (opcional)
+    df_from_minio = read_csv_from_minio(object_name, bucket_name)
+    if df_from_minio is not None:
+        print(df_from_minio.head())
