@@ -1,21 +1,20 @@
-from minio_utils import read_csv_from_minio, list_objects_in_bucket
+import pandas as pd
+from minio_utils import MinioManager
 
-def example_read_csv_from_minio():
-    object_name = "nba__1997-98_All Star_Totals.csv" 
-    bucket_name = "raw-nba"
+data_handler = MinioManager()
 
-    df = read_csv_from_minio(object_name, bucket_name)
-    
-    if df is not None:
-        print('teste')
-        print(df.head())
-    else:
-        print("Não foi possível ler o arquivo CSV.")
+objects = data_handler.list_objects_in_bucket("raw-nba")
 
+dfs = []
 
-if __name__ == "__main__":
-    bucket_name = "raw-nba"
-    objetos = list_objects_in_bucket(bucket_name)
-    for objeto in objetos:
-        objeto
-    example_read_csv_from_minio()
+if objects:
+    for obj in objects:
+        name = obj['Key']
+        df = data_handler.read_csv_from_minio(name, 'raw-nba')
+        dfs.append(df)
+    big_df = pd.concat(dfs, ignore_index=True)
+
+    temp_path = "/tmp/nba_data.csv"
+    big_df.to_csv(temp_path, index=False)
+
+    big_df = data_handler.upload_csv_to_minio(temp_path, 'silver_nba__all_seasons.csv', 'silver-nba')
